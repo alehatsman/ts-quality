@@ -1,0 +1,28 @@
+name: ts-quality-ci
+description: >-
+  Full pre-push gate — install deps (npm ci), then typecheck (tsc -b), lint +
+  format check (biome check), build (vite build), and the Playwright E2E suite.
+  Vulnerability auditing (vuln component) is intentionally separate.
+version: 1.0.0
+
+props:
+  dir:
+    type: string
+    default: "."
+    description: Project directory to run in (e.g. "web").
+
+steps:
+  - name: install dependencies (npm ci)
+    shell: cd "{{ props.dir }}" && npm ci
+
+  - name: typecheck (tsc -b)
+    shell: cd "{{ props.dir }}" && npx tsc -b
+
+  - name: lint + format check (biome check)
+    shell: cd "{{ props.dir }}" && npx biome check .
+
+  - name: build (vite build)
+    shell: cd "{{ props.dir }}" && npx vite build
+
+  - name: e2e (playwright test)
+    shell: cd "{{ props.dir }}" && npx playwright test

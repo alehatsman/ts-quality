@@ -1,0 +1,22 @@
+name: ts-quality-sync-config
+description: >-
+  Drop the shared baseline biome.json into the consumer repo as biome.base.json.
+  src reads from the module (component_dir); dest is relative and resolves
+  against the consumer's invocation dir (mooncake#43). The consumer's own
+  biome.json then `extends` ["./biome.base.json"] and layers local rule
+  overrides — Biome merges config natively, so the baseline stays the source of
+  truth.
+version: 1.0.0
+
+props:
+  dest:
+    type: string
+    default: "web/biome.base.json"
+    description: Destination path, relative to the consumer repo root.
+
+steps:
+  - name: install shared biome.base.json
+    file.copy:
+      src: "{{ component_dir }}/biome.json"
+      dest: "{{ props.dest }}"
+      force: true

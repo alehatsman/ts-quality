@@ -1,0 +1,13 @@
+name: ts-quality-format
+description: Format sources in place with Biome (biome format --write).
+version: 1.0.0
+
+props:
+  dir:
+    type: string
+    default: "."
+    description: Project directory to run in (e.g. "web").
+
+steps:
+  - name: biome format
+    shell: cd "{{ props.dir }}" && npx biome format --write .

@@ -1,0 +1,23 @@
+name: ts-quality-tools
+description: >-
+  Bootstrap the toolchain — install project dependencies (npm ci) and the
+  Playwright Chromium browser. Both steps are idempotent.
+version: 1.0.0
+
+# No prop-driven `when:` to gate the browser install: component props are only
+# in scope for plan-time-expanded fields (the shell command string), not for
+# execute-time-rendered step fields like `when:`/`cwd:`. So both steps always
+# run; `playwright install` is a no-op when the browser is already present.
+
+props:
+  dir:
+    type: string
+    default: "."
+    description: Project directory to run in (e.g. "web").
+
+steps:
+  - name: install dependencies (npm ci)
+    shell: cd "{{ props.dir }}" && npm ci
+
+  - name: install Playwright browsers (chromium)
+    shell: cd "{{ props.dir }}" && npx playwright install chromium

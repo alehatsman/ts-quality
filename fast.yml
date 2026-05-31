@@ -1,0 +1,18 @@
+name: ts-quality-ci-fast
+description: >-
+  Fast pre-commit gate — typecheck (tsc -b) + lint/format check (biome check).
+  Assumes dependencies are already installed; skips build and the E2E suite.
+version: 1.0.0
+
+props:
+  dir:
+    type: string
+    default: "."
+    description: Project directory to run in (e.g. "web").
+
+steps:
+  - name: typecheck (tsc -b)
+    shell: cd "{{ props.dir }}" && npx tsc -b
+
+  - name: lint + format check (biome check)
+    shell: cd "{{ props.dir }}" && npx biome check .

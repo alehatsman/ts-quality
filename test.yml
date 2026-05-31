@@ -1,0 +1,17 @@
+name: ts-quality-test
+description: Run the Playwright E2E suite (playwright test). Requires browsers installed (see the tools component).
+version: 1.0.0
+
+props:
+  dir:
+    type: string
+    default: "."
+    description: Project directory to run in (e.g. "web").
+  args:
+    type: string
+    default: ""
+    description: Extra args appended to `playwright test` (e.g. a test path or --grep).
+
+steps:
+  - name: playwright test
+    shell: cd "{{ props.dir }}" && npx playwright test {{ props.args }}

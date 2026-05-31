@@ -1,0 +1,26 @@
+name: ts-quality
+description: >-
+  Shared TypeScript/web quality-gate toolchain — one canonical Biome config plus
+  lint/format/typecheck/build/test/vuln components and CI gates for moongit/web
+  and future TS repos.
+# Export names map to component (preset) files at the module root. component_dir
+# resolves to filepath.Dir of the component file, so keeping these at the root
+# (alongside biome.json) lets sync-config reference `{{ component_dir }}/biome.json`
+# directly (mooncake#42). Every shell component takes a `dir` prop threaded into
+# the step cwd (invocation-relative, mooncake#43) so a consumer can target a
+# subdirectory — e.g. moongit passes `dir: web`.
+exports:
+  # Aggregate gates
+  default: ci.yml             # full pre-push gate (deps + typecheck + lint + build + test)
+  ci: ci.yml
+  ci-fast: fast.yml           # fast pre-commit gate (typecheck + biome check)
+  tools: tools.yml            # install deps + Playwright browsers
+  sync-config: sync-config.yml # drop the shared biome.json baseline into the consumer
+
+  # Individual stages
+  lint: lint.yml              # biome check (lint + format + assist verification)
+  format: format.yml          # biome format --write
+  typecheck: typecheck.yml    # tsc -b
+  build: build.yml            # vite build
+  test: test.yml              # playwright test
+  vuln: vuln.yml              # npm audit
