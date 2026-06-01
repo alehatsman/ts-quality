@@ -4,21 +4,38 @@ Shared TypeScript/web quality-gate toolchain as a [mooncake](https://github.com/
 
 ## Use
 
+Hoist the `dir` prop into the binding as a **default prop** (mooncake ≥ the
+default-props/shorthand release) and wire each export with the one-line
+task-as-alias shorthand:
+
 ```yaml
 modules:
-  tq: "127.0.0.1:8080/alehatsman/ts-quality@v0.1.0"
+  tq:
+    source: "127.0.0.1:8080/alehatsman/ts-quality@v0.1.0"
+    props:
+      dir: web              # applied to every tq/* export that declares it
 
 tasks:
-  ui-lint:      { steps: [{ use: tq/lint,      props: { dir: web } }] }
-  ui-typecheck: { steps: [{ use: tq/typecheck, props: { dir: web } }] }
-  ui-build:     { steps: [{ use: tq/build,     props: { dir: web } }] }
-  ui-test:      { steps: [{ use: tq/test,      props: { dir: web } }] }
-  ci:           { steps: [{ use: tq/ci,        props: { dir: web } }] }
-  ci-fast:      { steps: [{ use: tq/ci-fast,   props: { dir: web } }] }
+  ui-lint:      tq/lint
+  ui-typecheck: tq/typecheck
+  ui-build:     tq/build
+  ui-test:      tq/test
+  ci:           tq/ci
+  ci-fast:      tq/ci-fast
+  # sync-config takes a `dest`, not `dir`, so the default is filtered out:
+  ui-sync-config:
+    steps:
+      - use: tq/sync-config
+        props: { dest: "{{ invocation_dir }}/web/biome.json" }
 ```
 
-Every shell component takes a `dir` prop (default `.`) threaded into the step cwd
-so a consumer can target a subdirectory (e.g. `web`).
+Every shell component takes a `dir` prop (default `.`) threaded into the step
+cwd so a consumer can target a subdirectory (e.g. `web`). Declared once as a
+module-level default prop, it's applied only to the exports that declare it
+(so `sync-config`, which takes `dest`, ignores it); a per-call `props:` still
+overrides. `mooncake task` lists each component's own `description:`, so a
+shorthand task needs no `desc:`. The verbose form still works if you prefer it
+explicit: `ui-lint: { steps: [{ use: tq/lint, props: { dir: web } }] }`.
 
 ## Components
 
