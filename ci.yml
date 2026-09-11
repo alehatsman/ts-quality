@@ -1,28 +1,48 @@
-name: ts-quality-ci
 description: >-
-  Full pre-push gate — install deps (npm ci), then typecheck (tsc -b), lint +
-  format check (biome check), build (vite build), and the Playwright E2E suite.
-  Vulnerability auditing (vuln component) is intentionally separate.
-version: 1.0.0
+  Full pre-push gate — biome (lint + format + assist), typecheck, config drift,
+  build, test, supply-chain posture, npm audit, ai-lint over tracked files, soft
+  caps. First failure stops the run.
 
 props:
   dir:
     type: string
     default: "."
-    description: Project directory to run in (e.g. "web").
+    description: >-
+      Directory holding the package.json to gate, relative to where provision is
+      invoked. A repo whose packages are not one workspace passes each in turn;
+      making them a workspace is that repo's business, not the gate's.
+  cap_loc:
+    type: string
+    default: "500"
+    description: God-file soft cap in LOC (informational).
+  audit_level:
+    type: string
+    default: "high"
+    description: Minimum npm-audit severity that fails the gate.
+  biome_args:
+    type: string
+    default: ""
+    description: Extra flags appended to every biome invocation.
+  tsc_args:
+    type: string
+    default: ""
+    description: Extra flags appended to `tsc -b`.
 
 steps:
-  - name: install dependencies (npm ci)
-    shell: cd "{{ props.dir }}" && npm ci
-
-  - name: typecheck (tsc -b)
-    shell: cd "{{ props.dir }}" && npx tsc -b
-
-  - name: lint + format check (biome check)
-    shell: cd "{{ props.dir }}" && npx biome check .
-
-  - name: build (vite build)
-    shell: cd "{{ props.dir }}" && npx vite build
-
-  - name: e2e (playwright test)
-    shell: cd "{{ props.dir }}" && npx playwright test
+  # The full gate runs the consumer's build and test scripts, which on a web
+  # repo means a bundle and a browser suite. Ten minutes is provision's default
+  # and a cold machine will exceed it. The timeout lives here rather than at a
+  # call site: a `use` step propagates tags to its children and nothing else, so
+  # a consumer cannot reach in to set it.
+  - name: full gate
+    # `cd` first, then the assignments. A prefix on `cd` would not reach the
+    # script: `cd` is a regular builtin, so `VAR=x cd d` does not export VAR
+    # past the command, and the gate would silently run with its own defaults
+    # instead of the consumer's.
+    shell: >-
+      cd "{{ props.dir }}" &&
+      CAP_LOC="{{ props.cap_loc }}" AUDIT_LEVEL="{{ props.audit_level }}"
+      BIOME_ARGS="{{ props.biome_args }}" TSC_ARGS="{{ props.tsc_args }}"
+      bash "{{ component_dir }}/scripts/gate.sh" full
+    changed_when: false
+    timeout: 30m

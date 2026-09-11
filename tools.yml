@@ -1,23 +1,21 @@
-name: ts-quality-tools
 description: >-
-  Bootstrap the toolchain — install project dependencies (npm ci) and the
-  Playwright Chromium browser. Both steps are idempotent.
-version: 1.0.0
-
-# No prop-driven `when:` to gate the browser install: component props are only
-# in scope for plan-time-expanded fields (the shell command string), not for
-# execute-time-rendered step fields like `when:`/`cwd:`. So both steps always
-# run; `playwright install` is a no-op when the browser is already present.
+  Install the consumer's dependencies (npm ci) plus the Playwright browsers a
+  lockfile cannot express, then verify node/npm/biome/tsc are reachable.
 
 props:
   dir:
     type: string
     default: "."
-    description: Project directory to run in (e.g. "web").
+    description: Directory holding the package.json, relative to the invocation dir.
 
 steps:
-  - name: install dependencies (npm ci)
-    shell: cd "{{ props.dir }}" && npm ci
-
-  - name: install Playwright browsers (chromium)
-    shell: cd "{{ props.dir }}" && npx playwright install chromium
+  # Almost nothing is installed globally on purpose: biome, typescript, vite and
+  # playwright are devDependencies pinned by the consumer's own lockfile, and a
+  # global copy would mean the gate runs a different version than CI does.
+  - name: install
+    shell: cd "{{ props.dir }}" && bash "{{ component_dir }}/scripts/tools.sh" install
+  # The install step changes real state and cannot say in advance what it will
+  # do; `check` only asks, so its exit code is its whole contract.
+  - name: verify
+    shell: cd "{{ props.dir }}" && bash "{{ component_dir }}/scripts/tools.sh" check
+    changed_when: false

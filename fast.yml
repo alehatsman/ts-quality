@@ -1,18 +1,33 @@
-name: ts-quality-ci-fast
 description: >-
-  Fast pre-commit gate — typecheck (tsc -b) + lint/format check (biome check).
-  Assumes dependencies are already installed; skips build and the E2E suite.
-version: 1.0.0
+  Fast pre-commit gate — lockfile drift, biome over staged files, typecheck,
+  ai-lint over staged files, soft caps. No build, no test suite, no network.
 
 props:
   dir:
     type: string
     default: "."
-    description: Project directory to run in (e.g. "web").
+    description: >-
+      Directory holding the package.json to gate, relative to where provision is
+      invoked.
+  cap_loc:
+    type: string
+    default: "500"
+    description: God-file soft cap in LOC (informational).
+  biome_args:
+    type: string
+    default: ""
+    description: Extra flags appended to every biome invocation.
+  tsc_args:
+    type: string
+    default: ""
+    description: Extra flags appended to `tsc -b`.
 
 steps:
-  - name: typecheck (tsc -b)
-    shell: cd "{{ props.dir }}" && npx tsc -b
-
-  - name: lint + format check (biome check)
-    shell: cd "{{ props.dir }}" && npx biome check .
+  - name: fast gate
+    # `cd` before the assignments — see tsq/ci for why the other order loses them.
+    shell: >-
+      cd "{{ props.dir }}" &&
+      CAP_LOC="{{ props.cap_loc }}"
+      BIOME_ARGS="{{ props.biome_args }}" TSC_ARGS="{{ props.tsc_args }}"
+      bash "{{ component_dir }}/scripts/gate.sh" fast
+    changed_when: false

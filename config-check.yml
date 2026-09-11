@@ -1,0 +1,15 @@
+description: >-
+  Assert the consumer did not quietly weaken the shared config — a resolved
+  tsconfig that dropped a baseline strictness flag, a biome.json that does not
+  extend the baseline, or a rule switched off.
+
+props:
+  dir:
+    type: string
+    default: "."
+    description: Directory holding the package.json to check.
+
+steps:
+  - name: config drift
+    shell: cd "{{ props.dir }}" && bash "{{ component_dir }}/scripts/config-check.sh"
+    changed_when: false

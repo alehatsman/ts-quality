@@ -1,0 +1,23 @@
+{
+  "//": [
+    "The canonical npm scripts. package.json has no include mechanism — npm",
+    "cannot extend or merge a manifest the way biome.json and tsconfig.json can",
+    "— so this cannot be copied in. tsq/sync-config prints it and you paste it.",
+    "",
+    "This is the ts-quality analog of rust-quality's cargo aliases: anything",
+    "that is ONE invocation lives here, not in a provision component, so it",
+    "works in a terminal, in CI and in an editor with no provision installed.",
+    "Components exist only for multi-step gates and for config sync."
+  ],
+  "scripts": {
+    "lint": "biome check --error-on-warnings --max-diagnostics=none .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc -b",
+    "build": "vite build",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "knip": "knip"
+  },
+  "engines": { "node": "^24.0.0 || >=26.0.0" }
+}

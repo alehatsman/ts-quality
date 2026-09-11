@@ -1,22 +1,62 @@
-name: ts-quality-sync-config
 description: >-
-  Drop the shared baseline biome.json into the consumer repo as biome.base.json.
-  src reads from the module (component_dir); dest is relative and resolves
-  against the consumer's invocation dir (mooncake#43). The consumer's own
-  biome.json then `extends` ["./biome.base.json"] and layers local rule
-  overrides — Biome merges config natively, so the baseline stays the source of
-  truth.
-version: 1.0.0
+  Copy the shared config into the consumer repo — biome.json as
+  biome.base.json, plus tsconfig.base.json — then print the npm scripts and the
+  .npmrc settings, which npm gives us no way to copy.
 
 props:
-  dest:
+  dir:
     type: string
-    default: "web/biome.base.json"
-    description: Destination path, relative to the consumer repo root.
+    default: "."
+    description: >-
+      Directory holding the package.json to configure, relative to where
+      provision is invoked. A repo whose packages are not one workspace runs
+      this once per package.
 
+# A `file` step's `src` resolves against the file that names it, so
+# `{{ component_dir }}` is what reaches this checkout's own copies. `path` is
+# not resolved: a relative one is relative to the directory provision was
+# invoked from, which is the consumer repo. That asymmetry is the whole
+# mechanism — read from here, write over there — and it is why neither side
+# needs an argument saying where the consumer is.
+#
+# No `force`: `file` compares bytes and reports `ok` when they already match,
+# so re-running this is a no-op that says so.
+#
+# The two files below are OURS and a consumer has no reason to hand-edit them;
+# the consumer's own biome.json / tsconfig.json `extends` these and layers
+# local settings on top. Biome and tsc both merge natively — verified — so the
+# baseline stays the source of truth rather than being forked on copy.
 steps:
-  - name: install shared biome.base.json
-    file.copy:
+  - name: biome.base.json
+    file:
+      path: "{{ props.dir }}/biome.base.json"
+      state: file
       src: "{{ component_dir }}/biome.json"
-      dest: "{{ props.dest }}"
-      force: true
+
+  - name: tsconfig.base.json
+    file:
+      path: "{{ props.dir }}/tsconfig.base.json"
+      state: file
+      src: "{{ component_dir }}/tsconfig.base.json"
+
+  # npm has no include mechanism for a manifest, so scripts and `engines` are
+  # the one thing that cannot be a file copy. Print them; the consumer pastes.
+  - name: print the npm scripts block
+    shell: |
+      echo "── paste \"scripts\" and \"engines\" into {{ props.dir }}/package.json ──"
+      cat "{{ component_dir }}/package-scripts.json"
+      echo
+      echo "── then wire the two configs, which DO merge natively ──"
+      echo '  biome.json     -> { "extends": ["./biome.base.json"] }'
+      echo '  tsconfig.json  -> { "extends": "./tsconfig.base.json", ... }'
+      echo
+      echo "── and .npmrc, which is where the 2026 supply-chain defaults live ──"
+      echo '  engine-strict=true'
+      echo '  save-exact=true'
+      echo '  min-release-age=3          # npm >= 11.10.0, DAYS. The single'
+      echo '                             # highest-value setting available.'
+      echo '  strict-allow-scripts=true  # npm >= 11.16.0'
+      echo
+      echo "tsq/config-check enforces the tsconfig and biome halves."
+      echo "tsq/ci reports the .npmrc half via scripts/supply-chain.sh."
+    changed_when: false

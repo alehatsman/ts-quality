@@ -1,0 +1,29 @@
+description: >-
+  Every finding as JSONL for agents (.gate/findings.jsonl) — biome diagnostics,
+  tsc errors, ai-lint, config drift, supply-chain posture, npm audit. A pure
+  producer: never re-gates, never aborts. Enforcement stays with tsq/ci.
+
+props:
+  dir:
+    type: string
+    default: "."
+    description: Directory holding the package.json to collect from.
+  cap_loc:
+    type: string
+    default: "500"
+    description: God-file soft cap in LOC.
+  out:
+    type: string
+    default: ".gate/findings.jsonl"
+    description: Destination JSONL artifact (gitignore it). Relative to `dir`.
+
+steps:
+  - name: collect findings
+    # `out` is relative to `dir`, which is what a per-package run wants: each
+    # package writes its own .gate/findings.jsonl.
+    shell: >-
+      cd "{{ props.dir }}" &&
+      CAP_LOC="{{ props.cap_loc }}"
+      bash "{{ component_dir }}/scripts/findings.sh" "{{ props.out }}"
+    changed_when: false
+    timeout: 30m
