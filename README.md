@@ -7,6 +7,7 @@ and the agent-facing guide. Consumed by
 
 - [docs/TS.md](docs/TS.md) — how to write it. Rules, gate markers, the 2026 trap list, a review checklist.
 - [docs/STACK.md](docs/STACK.md) — what to reach for. De-facto picks with versions and deviation triggers.
+- [docs/UI.md](docs/UI.md) — how to structure a UI. Component separation, BEM, tokens; framework-neutral, and the part of it a grep can check is gated.
 
 ## What's here
 
@@ -31,8 +32,8 @@ gates with fail-fast ordering, and for getting config into a consumer repo.
 
 | File | What it does |
 |---|---|
-| `ci.yml` | full pre-push gate — biome, typecheck, config drift, build, test, supply chain, audit, ai-lint, soft caps |
-| `fast.yml` | pre-commit gate — lockfile drift, biome over staged, typecheck, ai-lint over staged, soft caps. No network |
+| `ci.yml` | full pre-push gate — biome, typecheck, config drift, build, test, supply chain, audit, ai-lint, ui-lint, soft caps |
+| `fast.yml` | pre-commit gate — lockfile drift, biome over staged, typecheck, ai-lint and ui-lint over staged, soft caps. No network |
 | `tools.yml` | `npm ci` + Playwright browsers, then verify |
 | `sync-config.yml` | config into the consumer repo, and print what cannot be copied |
 | `config-check.yml` | did the consumer quietly weaken the baseline |
@@ -102,11 +103,11 @@ what Biome reports nothing for — verified, not assumed.
 ## The gate
 
 `gate.sh fast` — pre-commit. Lockfile drift, Biome over staged files, typecheck,
-ai-lint over staged files, soft caps. No build, no suite, no network.
+ai-lint and ui-lint over staged files, soft caps. No build, no suite, no network.
 
 `gate.sh full` — pre-push. Biome, typecheck, config drift, the consumer's build
 and test scripts, supply-chain posture, npm audit, ai-lint over tracked files,
-soft caps. It runs ai-lint over everything tracked, not just a staged diff:
+ui-lint over tracked stylesheets, soft caps. It runs ai-lint over everything tracked, not just a staged diff:
 `--no-verify`, amends, rebases and merges all bypass the pre-commit path.
 
 Four things the gate exists to get right, all of which pass silently otherwise:

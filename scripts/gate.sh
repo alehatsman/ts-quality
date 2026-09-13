@@ -83,7 +83,7 @@ biome_check() { bx biome check --error-on-warnings --max-diagnostics=none ${BIOM
 case "$MODE" in
 # ── fast: pre-commit. No build, no test suite, no network. ───────────────────
 fast)
-  TOTAL=5
+  TOTAL=6
   step 1 "lockfile drift"
   if [ ! -f package-lock.json ]; then
     echo "  ✗ no package-lock.json — run 'npm install', stage it, re-commit" >&2; exit 1
@@ -109,13 +109,19 @@ fast)
     render "ai-lint" < <(ai_lint "${files[@]}")
   fi
 
-  step 5 "soft caps"
+  step 5 "ui-lint (staged)"
+  mapfile -t css < <(staged_css)
+  if [ "${#css[@]}" -eq 0 ]; then echo "  (no staged stylesheets)"; else
+    render "ui-lint" < <(ui_lint "${css[@]}")
+  fi
+
+  step 6 "soft caps"
   render "soft caps" < <(god_files)
   ;;
 
 # ── full: pre-push. ─────────────────────────────────────────────────────────
 full)
-  TOTAL=9
+  TOTAL=10
   step 1 "biome check"
   biome_check .
 
@@ -148,7 +154,12 @@ full)
   step 8 "ai-lint (tracked)"
   render "ai-lint" < <(tracked_ts | while IFS= read -r f; do ai_lint "$f"; done)
 
-  step 9 "soft caps"
+  # docs/UI.md's two stylesheet rules. Warnings: see ui_lint in lib.sh.
+  step 9 "ui-lint (tracked)"
+  mapfile -t css < <(tracked_css)
+  render "ui-lint" < <(ui_lint "${css[@]+"${css[@]}"}")
+
+  step 10 "soft caps"
   render "soft caps" < <(god_files)
   ;;
 
