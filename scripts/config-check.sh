@@ -20,6 +20,7 @@
 #   biome-unparseable   consumer biome.json is not strict JSON (Biome then runs with defaults)
 #   biome-not-extended  consumer biome.jsonc does not extend the baseline
 #   biome-rule-off      consumer turned a baseline-enabled rule off
+#   biome-first-exception  consumer files.includes starts with a negation; Biome matches no files
 #
 # Usage:
 #   bash scripts/config-check.sh                # human report
@@ -147,9 +148,19 @@ if cfg is not None:
     if not any("biome.base.json" in e for e in ext):
         rec("biome-not-extended", "error", consumer_biome, 1,
             'does not extend the baseline — add "extends": ["./biome.base.json"]')
+    raw = pathlib.Path(consumer_biome).read_text()
+    # `files.includes` replaces the baseline's list, and a list whose first
+    # pattern is a negation matches NO files: `biome check .` processes only
+    # the config and exits 0. Biome's own noBiomeFirstException reports this
+    # for biome.json but not biome.jsonc, and biome.jsonc is the consumer file.
+    inc = (cfg.get("files") or {}).get("includes")
+    if isinstance(inc, list) and inc and isinstance(inc[0], str) and inc[0].startswith("!"):
+        line = next((i for i, l in enumerate(raw.splitlines(), 1)
+                     if '"includes"' in l), 1)
+        rec("biome-first-exception", "error", consumer_biome, line,
+            'files.includes starts with a negation, so Biome matches no files — put "**" first')
     # A rule set to "off" anywhere in the consumer's own rules block is drift
     # worth surfacing. Reported per rule so the message names the rule.
-    raw = pathlib.Path(consumer_biome).read_text()
     rules = (cfg.get("linter") or {}).get("rules") or {}
     for group, entries in rules.items():
         if not isinstance(entries, dict):
