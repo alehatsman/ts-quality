@@ -17,7 +17,8 @@
 #
 #   tsconfig-weakened   a baseline compilerOption resolved to a weaker value
 #   tsconfig-absent     no tsconfig.json in the target directory
-#   biome-not-extended  consumer biome.json does not extend the baseline
+#   biome-unparseable   consumer biome.json is not strict JSON (Biome then runs with defaults)
+#   biome-not-extended  consumer biome.jsonc does not extend the baseline
 #   biome-rule-off      consumer turned a baseline-enabled rule off
 #
 # Usage:
@@ -123,12 +124,23 @@ else:
 # Biome merges `extends` natively, so there is nothing to diff rule-by-rule the
 # way go-quality must. Two things still have to be asserted: that the consumer
 # extends the baseline at all, and that it did not switch an inherited rule off.
-consumer_biome = next((p for p in ("biome.json", "biome.jsonc") if pathlib.Path(p).is_file()), None)
+consumer_biome = next((p for p in ("biome.jsonc", "biome.json") if pathlib.Path(p).is_file()), None)
+cfg = None
 if consumer_biome is None:
-    rec("biome-not-extended", "error", "biome.json", 1,
-        "no biome.json — run tsq/sync-config, then extend ./biome.base.json")
+    rec("biome-not-extended", "error", "biome.jsonc", 1,
+        "no biome.jsonc — run tsq/sync-config, then extend ./biome.base.json")
+elif consumer_biome == "biome.json":
+    # Biome reads biome.json as strict JSON. A comment in it is a parse error,
+    # and Biome then runs with a DEFAULT config — no extends, no excludes —
+    # instead of failing. It crawled a consumer's dist/ for five minutes once.
+    try:
+        cfg = json.loads(pathlib.Path(consumer_biome).read_text())
+    except json.JSONDecodeError as e:
+        rec("biome-unparseable", "error", consumer_biome, e.lineno,
+            f"not strict JSON ({e.msg}); Biome silently runs with defaults — rename to biome.jsonc")
 else:
     cfg = load_jsonc(consumer_biome)
+if cfg is not None:
     ext = cfg.get("extends", [])
     if isinstance(ext, str):
         ext = [ext]

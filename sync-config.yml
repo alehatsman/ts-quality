@@ -47,14 +47,23 @@ steps:
       cat "{{ component_dir }}/package-scripts.json"
       echo
       echo "── then wire the two configs, which DO merge natively ──"
-      echo '  biome.json     -> { "extends": ["./biome.base.json"] }'
+      echo '  biome.jsonc    -> { "extends": ["./biome.base.json"] }'
       echo '  tsconfig.json  -> { "extends": "./tsconfig.base.json", ... }'
+      echo
+      echo "  biome.jsonc, not biome.json: Biome reads biome.json as strict JSON,"
+      echo "  and on a parse error it runs with DEFAULTS (no extends, no excludes)"
+      echo "  rather than failing. config-check flags that as biome-unparseable."
+      echo "  A consumer restating excludes writes them as '!**/dir', not"
+      echo "  '!**/dir/**', and with no leading '**': Biome lints its own config"
+      echo "  and both spellings are warnings, fatal under --error-on-warnings."
       echo
       echo "── and .npmrc, which is where the 2026 supply-chain defaults live ──"
       echo '  engine-strict=true'
       echo '  save-exact=true'
       echo '  min-release-age=3          # npm >= 11.10.0, DAYS. The single'
       echo '                             # highest-value setting available.'
+      echo '                             # A Biome released < 3 days ago is'
+      echo '                             # refused too: pin the previous one.'
       echo '  strict-allow-scripts=true  # npm >= 11.16.0'
       echo
       echo "tsq/config-check enforces the tsconfig and biome halves."

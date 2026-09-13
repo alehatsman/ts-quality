@@ -40,6 +40,19 @@ fi
 # Without it, a missing biome is fetched from the registry mid-gate.
 bx() { npx --no-install "$@"; }
 have_script() { node -e 'const s=require("./package.json").scripts||{};process.exit(s[process.argv[1]]?0:1)' "$1" 2>/dev/null; }
+
+# The consumer's `typecheck` script when it has one, else `tsc -b`. A bare
+# `tsc -b` never sees a .svelte or .vue file; svelte-check / vue-tsc is the
+# type checker there, and only the consumer knows which. TSC_ARGS reaches the
+# fallback only — a script that wants flags writes them into the script.
+typecheck() {
+  if have_script typecheck; then
+    npm run typecheck --silent
+  else
+    # shellcheck disable=SC2086
+    bx tsc -b ${TSC_ARGS:-}
+  fi
+}
 step() { printf '[%s/%s] %s\n' "$1" "$TOTAL" "$2"; }
 
 # render <title> — turn lib.sh records on stdin into an indented human report.
@@ -88,8 +101,7 @@ fast)
   biome_check --staged .
 
   step 3 "typecheck"
-  # shellcheck disable=SC2086
-  bx tsc -b ${TSC_ARGS:-}
+  typecheck
 
   step 4 "ai-lint (staged)"
   mapfile -t files < <(staged_ts)
@@ -108,8 +120,7 @@ full)
   biome_check .
 
   step 2 "typecheck"
-  # shellcheck disable=SC2086
-  bx tsc -b ${TSC_ARGS:-}
+  typecheck
 
   step 3 "config drift"
   bash "$HERE/config-check.sh"

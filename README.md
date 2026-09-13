@@ -121,6 +121,9 @@ Four things the gate exists to get right, all of which pass silently otherwise:
   merges, and an override of `strict: false` compiles an implicit-`any` function
   with exit 0. `tsq/config-check` resolves the config and compares.
 - **`tsc` exits 2, not 1, when a project emits.** Gate on `!= 0`, never `== 1`.
+- **`tsc -b` never sees a `.svelte` or `.vue` file.** The gate runs the
+  consumer's `typecheck` script when it has one (svelte-check, vue-tsc), and
+  falls back to `tsc -b` only when it does not.
 
 ## The baseline is a file copy — and package.json is not
 
@@ -138,9 +141,19 @@ watches:
 ```
 tsconfig-weakened    a baseline compilerOption resolved to a weaker value
 tsconfig-absent      no tsconfig.json at all
-biome-not-extended   consumer biome.json does not extend the baseline
+biome-unparseable    consumer biome.json is not strict JSON — Biome runs with DEFAULTS, not an error
+biome-not-extended   consumer biome.jsonc does not extend the baseline
 biome-rule-off       consumer switched a baseline rule off
 ```
+
+The consumer file is `biome.jsonc`, not `biome.json`. `biome-rule-off` asks
+for the reason to be recorded, and a comment is where it goes; Biome reads
+`biome.json` as strict JSON, and on a parse error it does not fail — it runs
+with a default configuration, no `extends` and no excludes, and crawls
+`dist/`. Restated excludes are spelled `!**/dir`, with no leading `"**"`:
+Biome lints its own config, and `!**/dir/**` (`useBiomeIgnoreFolder`) and a
+leading `**` (`noBiomeFirstException`) are warnings, fatal under
+`--error-on-warnings`.
 
 ## Stance
 
@@ -171,7 +184,10 @@ malicious versions of legitimate packages, and an advisory does not exist at the
 moment one lands. It is wired in anyway, because known advisories still matter;
 it is just not the defence.
 
-The defence is configuration, and `scripts/supply-chain.sh` reports on it:
+The defence is configuration, and `scripts/supply-chain.sh` reports on it.
+One consequence to expect: `min-release-age=3` refuses the Biome this repo's
+`$schema` pins for the first three days after a Biome release. That is the
+setting working. Pin the previous version and let the schema mismatch be.
 
 | Rule | Meaning |
 |---|---|
@@ -232,7 +248,7 @@ First-time setup in a consumer repo:
 provision apply tasks/tools.yml         # npm ci + Playwright browsers
 provision apply tasks/sync-config.yml   # config in; prints scripts + .npmrc
 # paste the scripts/engines block into package.json
-# point biome.json and tsconfig.json at the two base files
+# point biome.jsonc and tsconfig.json at the two base files
 provision apply tasks/ci.yml
 ```
 
