@@ -145,22 +145,23 @@ tsconfig-absent      no tsconfig.json at all
 biome-unparseable    consumer biome.json is not strict JSON — Biome runs with DEFAULTS, not an error
 biome-not-extended   consumer biome.jsonc does not extend the baseline
 biome-rule-off       consumer switched a baseline rule off
-biome-first-exception  consumer files.includes starts with a negation — Biome then matches no files
+biome-first-exception  consumer files.includes starts with a negation and its biome.base.json has no leading ** — Biome matches no files
 ```
 
 The consumer file is `biome.jsonc`, not `biome.json`. `biome-rule-off` asks
 for the reason to be recorded, and a comment is where it goes; Biome reads
 `biome.json` as strict JSON, and on a parse error it does not fail — it runs
 with a default configuration, no `extends` and no excludes, and crawls
-`dist/`. Restated excludes are spelled `!**/dir`, and the list starts with
-`"**"`. A `files.includes` whose first pattern is a negation matches NO files:
-`biome check .` reports "Checked 1 file" — the config itself — and every rule
-passes vacuously (verified on 2.5.12 and 2.5.13; ts-quality#7 shipped exactly
-that and a consumer's gate ran green over nothing). Biome lints its own config:
-`noBiomeFirstException` is the error for a leading negation, and
-`useBiomeIgnoreFolder` warns on `!**/dir/**`; both are fatal under
-`--error-on-warnings`, but only for a `biome.json` — a `biome.jsonc` consumer
-gets neither, which is why config-check has `biome-first-exception`.
+`dist/`. Restated excludes are spelled `!**/dir`, with no leading `"**"`: the
+baseline supplies the catch-all, the consumer's negations merge onto it, and
+Biome's `noBiomeFirstException` errors on a second catch-all over an extended
+one. The same rule is why the baseline itself must start with `"**"`: a
+`files.includes` with no catch-all anywhere matches NO files — `biome check .`
+reports "Checked 1 file", the config itself, and every rule passes vacuously
+(2.5.12 and 2.5.13 agree; ts-quality#7 shipped exactly that, and a consumer's
+gate ran green over nothing). `useBiomeIgnoreFolder` warns on `!**/dir/**`.
+A stale `biome.base.json` copy reopens the hole silently, so config-check has
+`biome-first-exception`.
 
 ## Stance
 

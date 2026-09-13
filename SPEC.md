@@ -148,12 +148,14 @@ Components: `ci`, `fast`, `tools`, `sync-config`, `config-check`, `findings`.
   JSON reporter still emits an empty document — so a gate reading only
   diagnostics sees "clean". The baseline therefore sets it `false` and lists its
   exclusions explicitly in `files.includes`. v1 shipped `true`.
-- **A `files.includes` whose first pattern is a negation matches no files.**
-  `["!**/node_modules", ...]` makes `biome check .` process only the config
-  file and exit 0 — a gate over nothing. The list starts with `"**"`. Biome's
-  `noBiomeFirstException` catches this in a `biome.json` but not a
-  `biome.jsonc`, so `config-check` asserts it for the consumer file. The
-  baseline shipped negation-only until ts-quality#7 (2.5.12 and 2.5.13 agree).
+- **A `files.includes` with no catch-all anywhere matches no files.**
+  `["!**/node_modules", ...]` with nothing extended above it makes
+  `biome check .` process only the config file and exit 0 — a gate over
+  nothing. The baseline starts with `"**"`; a consumer extending it restates
+  negations only, since `noBiomeFirstException` errors on a second catch-all
+  over an extended one. `config-check` asserts the consumer's copied base
+  still starts with `"**"`. The baseline shipped negation-only until
+  ts-quality#7 (2.5.12 and 2.5.13 agree).
 - **`tsc` exit codes are not uniform**: `noEmit` → 1, **emitting → 2**,
   `noEmitOnError` → 1, `tsc -b` composite → 2, removed option → 2. Gate on
   `!= 0`, never `== 1`.
