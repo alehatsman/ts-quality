@@ -41,6 +41,10 @@ Companion: [STACK.md](STACK.md) — what to reach for.
    node`/`node10`/`classic`, `module: amd`/`umd`/`system`/`none`,
    `esModuleInterop: false`, `baseUrl`, `downlevelIteration`, `outFile`. Removed
    means `error TS5108`/`TS5102` and **exit 2**, not a warning.
+   `baseUrl` needs no replacement for an `@/` alias: since 4.1 a `paths`
+   entry resolves against the tsconfig's own directory, so write
+   `"@/*": ["./src/*"]` (relative — TS5090 otherwise) and drop both `baseUrl`
+   and the `ignoreDeprecations` that was silencing it.
 8. **`types` now defaults to `[]` in 7.** `@types/*` packages are no longer
    auto-included; list them explicitly or every global is `TS2304`.
 
