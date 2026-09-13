@@ -145,7 +145,9 @@ stream() {
   mapfile -t files < <(tracked_ts)   # mapfile, not $(..): paths may contain spaces
   biome_findings
   tsc_findings
-  emit < <(ai_lint "${files[@]+"${files[@]}"}"; god_files)
+  local css=()
+  mapfile -t css < <(tracked_css)
+  emit < <(ai_lint "${files[@]+"${files[@]}"}"; ui_lint "${css[@]+"${css[@]}"}"; god_files)
   bash "$HERE/config-check.sh"  --format jsonl --warn-only 2>/dev/null || true
   bash "$HERE/supply-chain.sh" --format jsonl --warn-only 2>/dev/null || true
   bash "$HERE/audit.sh"        --format jsonl --warn-only 2>/dev/null || true

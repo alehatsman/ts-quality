@@ -87,3 +87,90 @@ god_files() {
 # makes both functions speak the same coordinates.
 staged_ts()  { git diff --cached --relative --name-only --diff-filter=ACMR -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mts' '*.cts' 2>/dev/null; }
 tracked_ts() { git ls-files -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mts' '*.cts' 2>/dev/null; }
+
+# ── ui_lint <file...> ────────────────────────────────────────────────────────
+# The two stylesheet rules the fleet's UI guide (docs/UI.md) states and no
+# tool checks. Biome lints .css files but has no class-naming rule, and it
+# never looks at a Svelte or Vue <style> block at all, so a grep is the only
+# thing that sees both repos the same way.
+#
+#   bem-class     every class selector is block, block__element,
+#                 block--modifier or block__element--modifier, or matches
+#                 UI_CLASS_ALLOW (default: is-*, has-*, hljs-*, sr-only)
+#   raw-color     a hex / rgb() / hsl() literal outside a custom-property
+#                 declaration — use a token
+#   raw-radius    border-radius with a px/rem literal — use a token
+#   raw-duration  transition/animation with a literal duration other than
+#                 0s, 0ms or the 0.01ms reduced-motion kill switch — use a token
+#
+# Only stylesheets: *.css, *.scss, and the <style> blocks of *.svelte / *.vue.
+# Class ATTRIBUTES in markup are not selectors and are not read. Warnings, not
+# errors: a repo adopting this has an existing stylesheet, and the guide says
+# which way to move, not that the move is done.
+ui_lint() {
+  [ "$#" -gt 0 ] || return 0
+  UI_CLASS_ALLOW="${UI_CLASS_ALLOW:-^(is|has|hljs)-|^sr-only$}" python3 - "$@" <<'PY' || true
+import os, re, sys
+
+allow = re.compile(os.environ["UI_CLASS_ALLOW"])
+bem = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*(__[a-z][a-z0-9]*(-[a-z0-9]+)*)?(--[a-z][a-z0-9]*(-[a-z0-9]+)*)?$")
+cls = re.compile(r"(?<![\w.-])\.([A-Za-z_][\w-]*)")
+color = re.compile(r"#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\(")
+radius = re.compile(r"\bborder-(?:\w+-)?radius\s*:[^;{}]*\d(?:px|rem|em)")
+duration = re.compile(r"\b(?:transition|animation)(?:-duration)?\s*:[^;{}]*?(?<![\w.])(\d*\.?\d+)(m?s)\b")
+custom_prop = re.compile(r"^\s*--[\w-]+\s*:")
+style_block = re.compile(r"<style\b[^>]*>(.*?)</style>", re.S)
+
+def rec(rule, level, path, line, msg):
+    print(f"{rule}\t{level}\t{path}\t{line}\t{msg}")
+
+def strip_comments(text):
+    return re.sub(r"/\*.*?\*/", lambda m: re.sub(r"[^\n]", " ", m.group(0)), text, flags=re.S)
+
+def stylesheets(path):
+    """Yield (line_offset, css_text) for every stylesheet region in the file."""
+    text = open(path, encoding="utf-8", errors="replace").read()
+    if path.endswith((".svelte", ".vue")):
+        for m in style_block.finditer(text):
+            yield text.count("\n", 0, m.start(1)), m.group(1)
+    else:
+        yield 0, text
+
+def check(path):
+    for offset, css in stylesheets(path):
+        css = strip_comments(css)
+        # Selectors: everything between a `}`/`;`/`{`/start and the next `{`.
+        depth_media = 0
+        seen = set()
+        for m in re.finditer(r"([^{};]*)\{", css):
+            sel = m.group(1)
+            if sel.lstrip().startswith("@"):
+                continue
+            sel = re.sub(r"url\([^)]*\)|\"[^\"]*\"|'[^']*'", "", sel)
+            line = offset + css.count("\n", 0, m.start(1)) + 1
+            for c in cls.finditer(sel):
+                name = c.group(1)
+                if name in seen: continue
+                seen.add(name)
+                if bem.match(name) or allow.search(name): continue
+                rec("bem-class", "warning", path, line + sel.count("\n", 0, c.start()),
+                    f".{name} is not block, block__element, block--modifier or block__element--modifier")
+        for i, raw in enumerate(css.split("\n"), start=offset + 1):
+            if custom_prop.match(raw): continue
+            if color.search(raw):
+                rec("raw-color", "warning", path, i, "color literal — use a token (var(--…))")
+            if radius.search(raw):
+                rec("raw-radius", "warning", path, i, "radius literal — use a token")
+            d = duration.search(raw)
+            if d and d.group(1) + d.group(2) not in ("0s", "0ms", "0.01ms"):
+                rec("raw-duration", "warning", path, i, "duration literal — use a token")
+
+for p in sys.argv[1:]:
+    if not os.path.isfile(p): continue
+    if re.search(r"(^|/)(node_modules|dist|build|coverage)/", p) or p.endswith(".min.css"): continue
+    check(p)
+PY
+}
+
+staged_css()  { git diff --cached --relative --name-only --diff-filter=ACMR -- '*.css' '*.scss' '*.svelte' '*.vue' 2>/dev/null; }
+tracked_css() { git ls-files -- '*.css' '*.scss' '*.svelte' '*.vue' 2>/dev/null; }

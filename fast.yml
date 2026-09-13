@@ -1,6 +1,7 @@
 description: >-
   Fast pre-commit gate — lockfile drift, biome over staged files, typecheck,
-  ai-lint over staged files, soft caps. No build, no test suite, no network.
+  ai-lint and ui-lint over staged files, soft caps. No build, no test suite,
+  no network.
 
 props:
   dir:
