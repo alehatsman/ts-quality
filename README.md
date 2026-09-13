@@ -7,7 +7,7 @@ and the agent-facing guide. Consumed by
 
 - [docs/TS.md](docs/TS.md) — how to write it. Rules, gate markers, the 2026 trap list, a review checklist.
 - [docs/STACK.md](docs/STACK.md) — what to reach for. De-facto picks with versions and deviation triggers.
-- [docs/UI.md](docs/UI.md) — how to structure a UI. Component separation, BEM, tokens; framework-neutral, and the part of it a grep can check is gated.
+- [docs/UI.md](docs/UI.md) — how to structure a UI. BEM, tokens, and how a component is split and what it may own; framework-neutral (Svelte and React read the same rules), and the part of it a grep can check is gated.
 
 ## What's here
 
