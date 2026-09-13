@@ -111,6 +111,11 @@ tsc_findings() {
   out="$(mktemp)" || return 0
   # Buffered, not piped: a pipeline hides tsc's exit status, and "does not
   # compile" must not read the same as "clean".
+  #
+  # Always tsc, even where the gate would run the consumer's `typecheck`
+  # script: this parser reads tsc's diagnostic format and nothing else. A
+  # svelte-check or vue-tsc finding is not in the JSONL, which is a gap, not
+  # a claim of clean.
   bx tsc -b --pretty false >"$out" 2>&1 || rc=$?
   python3 -c '
 import json, re, sys

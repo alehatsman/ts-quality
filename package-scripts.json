@@ -14,6 +14,7 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "tsc -b",
+    "//typecheck": "the gate runs this script when present; a Svelte or Vue consumer puts svelte-check / vue-tsc here",
     "build": "vite build",
     "test": "vitest run",
     "test:e2e": "playwright test",

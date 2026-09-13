@@ -26,7 +26,10 @@ props:
   tsc_args:
     type: string
     default: ""
-    description: Extra flags appended to `tsc -b`.
+    description: >-
+      Extra flags appended to `tsc -b`. Reaches only the fallback: when the
+      consumer's package.json has a `typecheck` script, the gate runs that
+      instead, flags and all.
 
 steps:
   # The full gate runs the consumer's build and test scripts, which on a web
