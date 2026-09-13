@@ -53,9 +53,10 @@ steps:
       echo "  biome.jsonc, not biome.json: Biome reads biome.json as strict JSON,"
       echo "  and on a parse error it runs with DEFAULTS (no extends, no excludes)"
       echo "  rather than failing. config-check flags that as biome-unparseable."
-      echo "  A consumer restating excludes writes them as '!**/dir', not"
-      echo "  '!**/dir/**', and with no leading '**': Biome lints its own config"
-      echo "  and both spellings are warnings, fatal under --error-on-warnings."
+      echo "  A consumer restating excludes starts the list with '**' and writes"
+      echo "  them as '!**/dir', not '!**/dir/**'. A list whose FIRST pattern is"
+      echo "  a negation matches no files at all: the gate passes over nothing."
+      echo "  config-check flags that as biome-first-exception."
       echo
       echo "── and .npmrc, which is where the 2026 supply-chain defaults live ──"
       echo '  engine-strict=true'
