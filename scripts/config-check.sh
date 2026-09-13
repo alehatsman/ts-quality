@@ -20,7 +20,8 @@
 #   biome-unparseable   consumer biome.json is not strict JSON (Biome then runs with defaults)
 #   biome-not-extended  consumer biome.jsonc does not extend the baseline
 #   biome-rule-off      consumer turned a baseline-enabled rule off
-#   biome-first-exception  consumer files.includes starts with a negation; Biome matches no files
+#   biome-first-exception  consumer files.includes starts with a negation and its
+#                          biome.base.json has no leading "**"; Biome matches no files
 #
 # Usage:
 #   bash scripts/config-check.sh                # human report
@@ -149,16 +150,26 @@ if cfg is not None:
         rec("biome-not-extended", "error", consumer_biome, 1,
             'does not extend the baseline — add "extends": ["./biome.base.json"]')
     raw = pathlib.Path(consumer_biome).read_text()
-    # `files.includes` replaces the baseline's list, and a list whose first
-    # pattern is a negation matches NO files: `biome check .` processes only
-    # the config and exits 0. Biome's own noBiomeFirstException reports this
-    # for biome.json but not biome.jsonc, and biome.jsonc is the consumer file.
+    # The consumer's `files.includes` merges onto the extended base's, and
+    # the base supplies the one "**" (Biome errors on a second). So a
+    # consumer list of negations only is correct — unless the copied base
+    # has no "**" (pre-#7, or a stale copy), in which case NO file matches:
+    # `biome check .` processes only the config and exits 0.
     inc = (cfg.get("files") or {}).get("includes")
     if isinstance(inc, list) and inc and isinstance(inc[0], str) and inc[0].startswith("!"):
-        line = next((i for i, l in enumerate(raw.splitlines(), 1)
-                     if '"includes"' in l), 1)
-        rec("biome-first-exception", "error", consumer_biome, line,
-            'files.includes starts with a negation, so Biome matches no files — put "**" first')
+        base_inc = []
+        base = pathlib.Path("biome.base.json")
+        if base.is_file():
+            try:
+                base_inc = (json.loads(base.read_text()).get("files") or {}).get("includes") or []
+            except json.JSONDecodeError:
+                base_inc = []
+        if not (base_inc and base_inc[0] == "**"):
+            line = next((i for i, l in enumerate(raw.splitlines(), 1)
+                         if '"includes"' in l), 1)
+            rec("biome-first-exception", "error", consumer_biome, line,
+                'files.includes starts with a negation and biome.base.json supplies no "**" — '
+                'Biome matches no files; re-run sync-config')
     # A rule set to "off" anywhere in the consumer's own rules block is drift
     # worth surfacing. Reported per rule so the message names the rule.
     rules = (cfg.get("linter") or {}).get("rules") or {}
