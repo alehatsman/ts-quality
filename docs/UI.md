@@ -17,8 +17,11 @@ Companions: [TS.md](TS.md) — the code. [STACK.md](STACK.md) — what to reach 
    of the contract: tests, keyboard-nav selectors and `is-*` state flags target
    them, and a hashed or generated name breaks that. A task that seems to need
    one doesn't — ask before adding a dependency.
-2. **No component library, no state-management library.** The in-repo
-   primitives are the vocabulary (§2). A store is a plain module until it isn't.
+2. **No third-party component library, no state-management library.**
+   [kai-ui](https://github.com/alehatsman/kai-ui) is the fleet's vocabulary:
+   tokens, base stylesheet, BEM blocks, thin React and Svelte bindings over
+   them. In-repo `ui/` holds only the primitives kai-ui does not cover (§2).
+   A store is a plain module until it isn't.
 
 ## 1. Styling: BEM, strictly
 
@@ -51,18 +54,22 @@ Companions: [TS.md](TS.md) — the code. [STACK.md](STACK.md) — what to reach 
 
 ## 2. Structure: where a block lives
 
-9. **Shared blocks live in one base stylesheet.** Buttons, badges, dots,
-   banners, notices, toasts, the app shell, and any block used by more than one
-   feature or by the primitives. Each repo's `CLAUDE.md` names the file and
-   keeps a table of the shared blocks and their modifiers. **Check the table
-   before adding a color or a variant.**
+9. **Shared blocks come from kai-ui first, then one base stylesheet.**
+   Buttons, badges, dots, banners, inputs, cards, tables: kai-ui's stylesheet,
+   imported before the app's. The app's base stylesheet holds only the
+   app-local shared blocks — the app shell, and any block used by more than
+   one feature that kai-ui does not have. Never redefine or restyle a kai-ui
+   block in an app; change it in kai-ui. Each repo's `CLAUDE.md` names the
+   file and keeps a table of its app-local shared blocks. **Check kai-ui's
+   gallery and the table before adding a color or a variant.**
 10. **Feature-specific blocks stay with the feature.** Svelte: the component's
     own `<style>`. React: a co-located `features/<x>/<x>.css` imported by that
     feature's pages. Do not promote until a second consumer actually exists.
 11. **A pattern used by two features graduates to a primitive** — the shell
     moves into the shared vocabulary (`src/ui/` in React, a shared block in the
     base stylesheet in Svelte), the feature keeps its call site. Every primitive
-    gets a row in the gallery / the shared-block table when it lands.
+    gets a row in the gallery / the shared-block table when it lands. One
+    level up, the same rule: a pattern used by two *apps* graduates to kai-ui.
 12. **Domain → presentation mapping stays in the feature.** The primitive knows
     `{glyph, colorClass}`; the feature knows that `merged` means the purple one.
     Route matching, mutation wiring and other caller-derived state stay at the
@@ -76,14 +83,16 @@ Companions: [TS.md](TS.md) — the code. [STACK.md](STACK.md) — what to reach 
 14. **Colors, spacing, radii, shadows, durations and font stacks are custom
     properties on `:root`.** A component never hardcodes a hex or `rgb()`
     color, an ad-hoc `border-radius: Npx`, a bespoke transition duration, or a
-    spelled-out `font-family` stack — it reuses a token or adds one to the base
-    stylesheet. A `var(--x, #hex)` fallback is still a raw literal; the token
+    spelled-out `font-family` stack — it reuses a kai-ui token (`tokens.css`)
+    or, for an app-local value, adds one to the app's base stylesheet. A `var(--x, #hex)` fallback is still a raw literal; the token
     is the fallback. `[gate: raw-color, raw-radius,
     raw-duration]`
 15. **Theme is a token swap, not a second stylesheet.** Light/dark and named
     schemes redefine the tokens under a selector or `@media`; blocks read tokens
-    and never branch on theme themselves. A dark-only app skips the branch and
-    says so in its `CLAUDE.md`.
+    and never branch on theme themselves. Fleet schemes are kai-ui's, picked by
+    `data-theme` on `<html>`: absent = GitHub following the OS, `github-light`,
+    `github-dark`, `monokai`. An app that pins one scheme says so in its
+    `CLAUDE.md`.
 
 ## 4. Motion and accessibility
 
@@ -140,6 +149,7 @@ differ (a Svelte component, a React function component); the rules do not.
     components). Until then the pattern stays in the feature, duplicated if it
     is three CSS properties, extracted to a sibling module if it is logic.
     When it promotes, the shell moves and the domain mapping stays behind.
+    The second *app* promotes it again, into kai-ui.
 26. **Loading, error, empty and data are four branches of one gate**, not a
     ladder of `{#if}` / `&&` scattered through the markup. Codefort's
     `DataState` is the reference shape; a Svelte repo writes the same four
@@ -149,9 +159,10 @@ differ (a Svelte component, a React function component); the rules do not.
     warning], gets split by the rules above before more is added. Helpers with
     no reactive state move to a plain module beside the component; they are
     then unit-testable without mounting anything.
-28. **Every primitive is visible somewhere a reviewer can open.** A gallery
-    page in React (`/dev/ui`), the shared-block table in `CLAUDE.md` in Svelte.
-    A primitive with neither does not exist.
+28. **Every primitive is visible somewhere a reviewer can open.** kai-ui
+    primitives: kai-ui's gallery, React and Svelte side by side. App-local
+    primitives: a gallery page in React (`/dev/ui`), the shared-block table in
+    `CLAUDE.md` in Svelte. A primitive with none of these does not exist.
 
 ## 6. Before calling it done
 
